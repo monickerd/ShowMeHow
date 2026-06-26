@@ -48,7 +48,8 @@
       </div>
 
       <!-- Remote stream -->
-      <video id="remote-video" autoplay playsinline style="display:none"></video>
+      <video id="remote-video" autoplay playsinline muted style="display:none"></video>
+      <audio id="remote-audio" autoplay playsinline></audio>
 
       <!-- Local screen share preview (PIP) -->
       <div class="local-pip hidden" id="local-pip">
@@ -138,6 +139,7 @@
     const overlayCodeLine= document.getElementById('overlay-code-line');
     const statusPill     = document.getElementById('status-pill');
     const statusText     = document.getElementById('status-text');
+    const remoteAudio    = document.getElementById('remote-audio');
     const btnMic         = document.getElementById('btn-mic');
     const btnShare       = document.getElementById('btn-share');
     const btnChat        = document.getElementById('btn-chat');
@@ -209,7 +211,12 @@
 
     // ── Signaling events ──────────────────────────────────────────────────────
     signaling.onPeerJoined = async ({ initiateOffer }) => {
-      peerConnected = true;
+      peerConnected  = true;
+      remoteSharing  = false;
+      remoteVideo.srcObject = null;
+      remoteAudio.srcObject = null;
+      peer.reset();    // always start with a fresh RTCPeerConnection
+      adaptive.stop(); // will restart once tracks arrive
       setStatus('connecting', 'Connecting…');
       updateOverlay();
 
@@ -225,16 +232,39 @@
       peerConnected = false;
       remoteSharing = false;
       remoteVideo.srcObject = null;
+      remoteAudio.srcObject = null;
       setStatus('disconnected', 'Other person left');
       updateOverlay();
       adaptive.stop();
       screen.orientation?.unlock?.();
     };
 
-    signaling.onMessage((msg) => {
-      if (msg.type === 'cursor') cursor.update(msg.x, msg.y);
-      if (msg.type === 'click')  cursor.showClick(msg.x, msg.y);
+    // Convert normalised video-content coords to viewport pixel coords.
+    // When this peer is sharing a full-screen capture (displaySurface === 'monitor'),
+    // account for the browser chrome height and window position on screen so the
+    // cursor overlay lands on the correct pixel rather than drifting toward the top.
+    function normToViewportPx(x, y) {
+      if (isSharing) {
+        const track    = capture.screenStream?.getVideoTracks()[0];
+        const settings = track?.getSettings() ?? {};
+        if (settings.displaySurface === 'monitor') {
+          const chromeH = window.outerHeight - window.innerHeight;
+          return {
+            px: x * window.screen.width  - window.screenX,
+            py: y * window.screen.height - window.screenY - chromeH,
+          };
+        }
+      }
+      return { px: x * window.innerWidth, py: y * window.innerHeight };
+    }
+
+    signaling.onMessage(async (msg) => {
+      if (msg.type === 'cursor') {
+        const { px, py } = normToViewportPx(msg.x, msg.y);
+        cursor.updatePx(px, py);
+      }
       if (msg.type === 'share-start') {
+        if (isSharing) await stopSharing(); // one share at a time
         remoteSharing = true;
         updateOverlay();
         screen.orientation?.lock?.('landscape').catch(() => {});
@@ -252,7 +282,10 @@
 
     // ── Peer events ───────────────────────────────────────────────────────────
     peer.onTrack = (stream) => {
+      // Video element is muted — audio plays through the dedicated audio element
+      // so it's always live regardless of whether remote is sharing video
       remoteVideo.srcObject = stream;
+      remoteAudio.srcObject = stream;
       setStatus('connected', 'Connected');
       adaptive.start();
     };

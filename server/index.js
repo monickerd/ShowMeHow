@@ -22,7 +22,7 @@ function serveFile(res, filePath) {
   const ext = path.extname(filePath);
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); res.end('Not found'); return; }
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'text/plain' });
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'text/plain', 'Cache-Control': 'no-cache' });
     res.end(data);
   });
 }
@@ -101,14 +101,14 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 function send(socket, msg) {
-  if (socket?.readyState === socket?.OPEN) {
+  if (socket && socket.readyState === socket.OPEN) {
     socket.send(JSON.stringify(msg));
   }
 }
 
 const RELAY_TYPES = new Set([
   'offer', 'answer', 'ice-candidate',
-  'cursor', 'click',
+  'cursor',
   'share-start', 'share-stop',
   'chat',
 ]);

@@ -42,7 +42,6 @@ export class Viewer {
     this._zoomEl = zoomEl;
 
     container.addEventListener('mousemove',   this._onMouseMove.bind(this));
-    container.addEventListener('click',       this._onMouseClick.bind(this));
     container.addEventListener('touchstart',  this._onTouchStart.bind(this),  { passive: true });
     container.addEventListener('touchmove',   this._onTouchMove.bind(this),   { passive: true });
     container.addEventListener('touchend',    this._onTouchEnd.bind(this),    { passive: true });
@@ -63,12 +62,6 @@ export class Viewer {
     if (now - this._lastSend < CURSOR_THROTTLE_MS) return;
     this._lastSend = now;
     this._trySendCursor(e.clientX, e.clientY);
-  }
-
-  _onMouseClick(e) {
-    const rect   = this._video.getBoundingClientRect();
-    const coords = this._mapToVideoNorm(e.clientX, e.clientY, rect);
-    if (coords) this._peer.signaling.send({ type: 'click', x: coords.x, y: coords.y });
   }
 
   // ── Touch ─────────────────────────────────────────────────────────────────
@@ -195,9 +188,6 @@ export class Viewer {
           this.resetZoom();
         } else {
           this._lastTapMs = now;
-          const rect   = this._video.getBoundingClientRect();
-          const coords = this._mapToVideoNorm(lastRec.curX, lastRec.curY, rect);
-          if (coords) this._peer.signaling.send({ type: 'click', x: coords.x, y: coords.y });
         }
       }
     }

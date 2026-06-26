@@ -9,6 +9,7 @@ export class Adaptive {
   }
 
   start() {
+    if (this._timer !== null) return;
     this._timer = setInterval(() => this._poll(), POLL_INTERVAL_MS);
   }
 

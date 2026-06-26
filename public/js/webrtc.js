@@ -5,7 +5,8 @@ const DEFAULT_ICE_SERVERS = [
 
 export class WebRTCPeer {
   constructor(signaling, iceServers = DEFAULT_ICE_SERVERS) {
-    this.signaling = signaling;
+    this.signaling   = signaling;
+    this._iceServers = iceServers;
 
     this.onTrack                 = null;
     this.onConnectionStateChange = null;
@@ -15,6 +16,17 @@ export class WebRTCPeer {
     this._audioTransceiver = null;
 
     this._bindSignaling();
+    this._bindPeerConnection();
+  }
+
+  // Tear down and recreate the RTCPeerConnection (e.g. after a peer reconnects).
+  // Signaling handlers are NOT re-bound — they reference this._pc via `this`
+  // and will automatically use the new instance.
+  reset() {
+    this._pc.close();
+    this._pc               = new RTCPeerConnection({ iceServers: this._iceServers });
+    this._videoTransceiver = null;
+    this._audioTransceiver = null;
     this._bindPeerConnection();
   }
 
@@ -91,12 +103,16 @@ export class WebRTCPeer {
   }
 
   _bindPeerConnection() {
+    this._remoteStream = new MediaStream();
+
     this._pc.addEventListener('icecandidate', ({ candidate }) => {
       if (candidate) this.signaling.send({ type: 'ice-candidate', candidate });
     });
 
-    this._pc.addEventListener('track', ({ track, streams }) => {
-      if (track.kind === 'video' && streams[0]) this.onTrack?.(streams[0]);
+    this._pc.addEventListener('track', ({ track }) => {
+      this._remoteStream.addTrack(track);
+      // Fire for every track so Firefox re-evaluates srcObject when audio arrives
+      this.onTrack?.(this._remoteStream);
     });
 
     this._pc.addEventListener('connectionstatechange', () => {
