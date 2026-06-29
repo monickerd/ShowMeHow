@@ -1,4 +1,4 @@
-# ShowMeHow
+# QuickHelp
 
 Lightweight 1:1 screen sharing for tech support. No accounts, no plugins — just share a link and go.
 
