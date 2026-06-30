@@ -270,8 +270,9 @@ input[type="text"]::placeholder { color: var(--muted); }
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s, transform 0.1s;
 }
-.ctrl-btn:hover  { background: #2a2d3e; }
-.ctrl-btn:active { transform: scale(0.91); }
+.ctrl-btn:hover    { background: #2a2d3e; }
+.ctrl-btn:active   { transform: scale(0.91); }
+.ctrl-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* Active state — e.g. screen share is live */
 .ctrl-btn.active { background: var(--accent); color: #fff; }

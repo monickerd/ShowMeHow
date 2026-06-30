@@ -210,6 +210,17 @@
 
     updateMicButton(); // set initial state (mic-off) before permission resolves
 
+    // Mobile browsers block audio autoplay until a user gesture occurs.
+    // Retry play() on every interaction so audio starts as soon as the user taps anything.
+    document.addEventListener('click',      () => { if (remoteAudio.srcObject && remoteAudio.paused) remoteAudio.play().catch(() => {}); }, true);
+    document.addEventListener('touchstart', () => { if (remoteAudio.srcObject && remoteAudio.paused) remoteAudio.play().catch(() => {}); }, { capture: true, passive: true });
+
+    // Disable screen share if the browser doesn't support getDisplayMedia (e.g. Android)
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      btnShare.disabled = true;
+      btnShare.title = 'Screen sharing is not supported on this browser';
+    }
+
     // ── UI helpers ────────────────────────────────────────────────────────────
     function setStatus(state, text) {
       statusPill.className  = `status ${state}`;
@@ -356,6 +367,9 @@
         peerConnected = true;
         setStatus('connected', 'Connected');
         updateOverlay();
+        // Retry audio play — the initial attempt in onTrack may have been blocked
+        // by mobile autoplay policy before any user gesture occurred.
+        remoteAudio.play().catch(() => {});
         // Re-attach mic + any in-progress screen share onto the live connection
         await reapplyLocalState();
       }
