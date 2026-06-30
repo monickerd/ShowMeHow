@@ -90,13 +90,7 @@
         <!-- badge injected by Chat -->
       </button>
 
-      <button class="ctrl-btn hidden" id="btn-fit" title="Reset zoom (double-tap)">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-        </svg>
-      </button>
-
-      <button class="ctrl-btn" id="btn-fullscreen" title="Fullscreen">
+<button class="ctrl-btn" id="btn-fullscreen" title="Fullscreen">
         <svg id="icon-fs-enter" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
         </svg>
@@ -142,8 +136,7 @@
     const btnMic         = document.getElementById('btn-mic');
     const btnShare       = document.getElementById('btn-share');
     const btnChat        = document.getElementById('btn-chat');
-    const btnFit         = document.getElementById('btn-fit');
-    const btnFullscreen  = document.getElementById('btn-fullscreen');
+const btnFullscreen  = document.getElementById('btn-fullscreen');
     const btnEnd         = document.getElementById('btn-end');
 
     const errorBanner    = document.getElementById('error-banner');
@@ -379,7 +372,6 @@
 
     // ── Viewer (pinch-zoom + cursor sending when viewing remote) ──────────────
     viewer.startCursorTracking(document.getElementById('viewer-body'));
-    viewer.onZoomChange = (zoom) => btnFit.classList.toggle('hidden', zoom <= 1);
 
     // ── Control bar ───────────────────────────────────────────────────────────
 
@@ -445,8 +437,6 @@
       signaling.send({ type: 'chat', text });
       chat.addMessage(text, true);
     };
-
-    btnFit.addEventListener('click', () => viewer.resetZoom());
 
     btnFullscreen.addEventListener('click', () => {
       if (document.fullscreenElement) document.exitFullscreen();
