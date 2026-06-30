@@ -10,10 +10,11 @@ services:
       - BASE_URL=${BASE_URL:-http://localhost:8383}
       # ── TURN server (recommended for clients behind strict NAT) ──────────
       # TURN_URLS: comma-separated list of TURN/TURNS endpoints.
-      # For coturn, typically both a plain and a TLS endpoint:
-      #   TURN_URLS=turn:turn.example.com:3478,turns:turn.example.com:5349
+      # Example: turn:turn.example.com:3478,turns:turn.example.com:5349
       - TURN_URLS=${TURN_URLS:-}
-      # Static credentials configured in coturn (use_auth_secret mode is also
-      # fine — generate short-lived credentials server-side if desired).
+      # For coturn use_auth_secret mode — set TURN_SECRET to your shared secret.
+      # The server generates short-lived HMAC credentials automatically.
+      - TURN_SECRET=${TURN_SECRET:-}
+      # For static credentials instead, set these (leave TURN_SECRET unset):
       - TURN_USERNAME=${TURN_USERNAME:-}
       - TURN_CREDENTIAL=${TURN_CREDENTIAL:-}
