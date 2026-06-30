@@ -193,8 +193,22 @@
 
     btnChat.appendChild(chat.badge);
 
-    // Request mic early so the permission prompt fires immediately
+    // Request mic early — fires the permission prompt on desktop.
+    // On mobile browsers that require a user gesture, this may resolve with null;
+    // the mic button will retry when tapped.
     const micPromise = capture.startMic();
+
+    // Sync button state once the eager request settles.
+    // Also covers the race where the WebRTC connection went live before the user
+    // responded to the mic permission prompt.
+    micPromise.then(() => {
+      updateMicButton();
+      if (capture.micTrack && peer.connectionState === 'connected') {
+        peer.replaceAudioTrack(capture.micTrack).catch(() => {});
+      }
+    });
+
+    updateMicButton(); // set initial state (mic-off) before permission resolves
 
     // ── UI helpers ────────────────────────────────────────────────────────────
     function setStatus(state, text) {
@@ -213,12 +227,23 @@
       errorBanner.classList.add('hidden');
     }
 
+    function updateMicButton() {
+      const noMic   = !capture.micTrack;
+      const showOff = isMicMuted || noMic;
+      btnMic.classList.toggle('muted', showOff);
+      document.getElementById('icon-mic').style.display     = showOff ? 'none'  : 'block';
+      document.getElementById('icon-mic-off').style.display = showOff ? 'block' : 'none';
+      btnMic.title = noMic ? 'Tap to enable microphone' : (isMicMuted ? 'Unmute' : 'Mute');
+    }
+
     // Re-assert everything this side is sending onto the current connection.
     // Runs on every (re)connect, so a fresh join and a reconnect take the exact
     // same path: on a fresh join nothing is active yet (no-op); on a reconnect
     // the mic and any in-progress screen share are re-attached automatically.
     async function reapplyLocalState() {
-      const micTrack = await micPromise;
+      // Read micTrack directly — handles the case where permission was granted
+      // lazily (after the original micPromise already resolved with null).
+      const micTrack = capture.micTrack;
       if (micTrack) await peer.replaceAudioTrack(micTrack);
 
       if (isSharing) {
@@ -320,6 +345,7 @@
       // so it's always live regardless of whether remote is sharing video
       remoteVideo.srcObject = stream;
       remoteAudio.srcObject = stream;
+      remoteAudio.play().catch(() => {}); // explicit play() required on some mobile browsers
       setStatus('connected', 'Connected');
       adaptive.start();
     };
@@ -343,12 +369,19 @@
 
     // ── Control bar ───────────────────────────────────────────────────────────
 
-    btnMic.addEventListener('click', () => {
-      isMicMuted = !isMicMuted;
-      capture.setMicEnabled(!isMicMuted);
-      btnMic.classList.toggle('muted', isMicMuted);
-      document.getElementById('icon-mic').style.display     = isMicMuted ? 'none'  : 'block';
-      document.getElementById('icon-mic-off').style.display = isMicMuted ? 'block' : 'none';
+    btnMic.addEventListener('click', async () => {
+      if (!capture.micTrack) {
+        // Mic not yet obtained — try now with user gesture context (needed on mobile).
+        const track = await capture.startMic();
+        if (track && peer.connectionState === 'connected') {
+          await peer.replaceAudioTrack(track);
+        }
+        isMicMuted = !track; // if denied, stay "muted"; if granted, unmute
+      } else {
+        isMicMuted = !isMicMuted;
+        capture.setMicEnabled(!isMicMuted);
+      }
+      updateMicButton();
     });
 
     btnShare.addEventListener('click', async () => {

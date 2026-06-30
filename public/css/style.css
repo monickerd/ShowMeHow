@@ -178,6 +178,7 @@ input[type="text"]::placeholder { color: var(--muted); }
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh; /* shrinks when mobile browser bar is visible */
   overflow: hidden;
 }
 
@@ -526,6 +527,27 @@ input[type="text"]::placeholder { color: var(--muted); }
   .chat-panel { width: 100%; }
 
   .local-pip { width: 160px; }
+}
+
+/* ── Landscape mobile — maximize video area ──────────────── */
+@media (orientation: landscape) and (max-height: 500px) {
+  .viewer-topbar {
+    padding: 3px 12px;
+    gap: 8px;
+    min-height: 0;
+  }
+  .viewer-topbar .logo { display: none; }
+  #link-box            { display: none; }
+  .topbar-right        { width: auto; }
+  .control-bar {
+    padding: 3px 12px;
+    gap: 4px;
+  }
+  .ctrl-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .local-pip { width: 120px; }
 }
 
 /* ── Utility ─────────────────────────────────────────────── */
