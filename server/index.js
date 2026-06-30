@@ -1,6 +1,7 @@
-const http = require('http');
-const fs   = require('fs');
-const path = require('path');
+const http   = require('http');
+const fs     = require('fs');
+const path   = require('path');
+const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const { createRoom, getRoom, deleteRoom, scheduleDelete, resolveRoomId, claimSlot, setPeer, clearPeer, getOtherPeer, bothPresent, isRoomEmpty, allowRestart } = require('./session');
 
@@ -57,9 +58,25 @@ function parseTurnUrls(raw) {
   return trimmed.split(',').map(s => s.trim()).filter(Boolean);
 }
 
+// Generate time-limited credentials for coturn use_auth_secret mode.
+// username = expiry timestamp; credential = HMAC-SHA1(secret, username).
+function hmacTurnCredentials(secret, ttlSeconds = 86400) {
+  const expiry   = Math.floor(Date.now() / 1000) + ttlSeconds;
+  const username = String(expiry);
+  const credential = crypto.createHmac('sha1', secret).update(username).digest('base64');
+  return { username, credential };
+}
+
 function buildIceServers() {
-  const username   = process.env.TURN_USERNAME   || undefined;
-  const credential = process.env.TURN_CREDENTIAL || undefined;
+  const turnSecret = process.env.TURN_SECRET || undefined;
+  let username, credential;
+
+  if (turnSecret) {
+    ({ username, credential } = hmacTurnCredentials(turnSecret));
+  } else {
+    username   = process.env.TURN_USERNAME   || undefined;
+    credential = process.env.TURN_CREDENTIAL || undefined;
+  }
 
   const turn = parseTurnUrls(process.env.TURN_URLS).map(url => {
     const entry = { urls: url };
@@ -228,8 +245,9 @@ server.listen(PORT, () => {
   if (turnEntries.length === 0) {
     log('WARN', 'No TURN servers configured — clients behind strict NAT may fail to connect');
   } else {
+    const authMode = process.env.TURN_SECRET ? 'hmac (use_auth_secret)' : 'static';
     for (const t of turnEntries) {
-      log('START', `  TURN: ${t.urls}  user=${t.username ?? '(none)'}  credential=${t.credential ? '***' : '(none)'}`);
+      log('START', `  TURN [${authMode}]: ${t.urls}  user=${t.username ?? '(none)'}  credential=${t.credential ? '***' : '(none)'}`);
     }
   }
 });
